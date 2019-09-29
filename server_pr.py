@@ -74,11 +74,13 @@ class Admin(threading.Thread):
 +-----+-----------+---------+
 |  2  | file2.mp4 |  107MB  |
 +-----+-----------+---------+
+|  3  | file3.mp4 |  12MB   |
++-----+-----------+---------+
 |  9  |       regresar      |
 +-----+---------------------+
                     """)
             elif nivel == 1:
-                if opcion != "1" and opcion != "2" and opcion != "9":
+                if opcion != "1" and opcion != "2" and opcion != "9" and opcion != "3":
                     print("ingrese una opcion valida")
                 elif opcion == "9":
                     nivel = 0
