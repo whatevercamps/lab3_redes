@@ -3,30 +3,41 @@ import pickle
 import hashlib
 import sys
 import time
+
 HEADERSIZE = 22
 usrs = []
 
 class Client(threading.Thread):
-    def __init__(self, clientAddress, clientsocket, msg):
+    def __init__(self, clientAddress, clientsocket, pos):
         threading.Thread.__init__(self)
-        self.msg = msg
         self.csocket = clientsocket
-        print ("Nuevo cliente creado: ", clientAddress[0])
+        self.index = pos
+        print ("Nuevo cliente vinculado: ", clientAddress[0])
     def run(self):
-        self.csocket.send(self.msg)
+        while True:
+            msg = self.csocket.recv(1024)
+            msg_dcd = msg.decode("utf-8")
+            if "LISTO" in msg_dcd:
+                usrs[self.index][2] = True
+    def enviar(self, msg, hasher):
+        print("llega al menos")
+        print(f"enviando archivo con tamanio: {len(msg)} y hash: {hasher.hexdigest()}")
+        msg_pr = bytes(f"{len(msg):<{HEADERSIZE}}", "utf-8") + msg
+        self.csocket.send(msg_pr)
+
+        
 
 class Admin(threading.Thread):
     def __init__(self):
         threading.Thread.__init__(self)
     def run(self):
-        global usrs
         print ("""
 +-------------------------------------+
 |               Opciones              |
 +-----+-------------------------------+
 | Num |             Accion            |
 +-----+-------------------------------+
-|  1  | Mostrar servidores conectados |
+|  1  | Mostrar clientes conectados   |
 +-----+-------------------------------+
 |  2  | Enviar archivo                |
 +-----+-------------------------------+
@@ -42,8 +53,11 @@ class Admin(threading.Thread):
                         print("NO HAY CLIENTES CONECTADOS")
                     else:
                         print(f"{'IP':^20}" + f"{'PUERTO':^20}" + f"{'ESTADO':^20}")
-                        for a in range(len(usrs)):
-                            print(f"{usrs[a][0][0]:^20}" + f"{usrs[a][0][1]:^20}" + f"{'ESTADO':^20}")
+                        for a in usrs:
+                            estado = "ESPERANDO"
+                            if a[2] == True:
+                                estado = "LISTO"
+                            print(f"{a[0][0]:^20}" + f"{a[0][1]:^20}" + f"{estado:^20}")
 
                 elif opcion == "2":
                     nivel = 1
@@ -71,7 +85,7 @@ class Admin(threading.Thread):
 +-----+-------------------------------+
 | Num |             Accion            |
 +-----+-------------------------------+
-|  1  | Mostrar servidores conectados |
+|  1  | Mostrar clientes conectados   |
 +-----+-------------------------------+
 |  2  | Enviar archivo                |
 +-----+-------------------------------+
@@ -79,27 +93,47 @@ class Admin(threading.Thread):
 +-----+-------------------------------+
                     """)
                 else:
-                    nivel = 0
-                    file = open(f'file{opcion}.mp4', 'rb')
-                    msg = file.read()
-                    hasher = hashlib.md5()
-                    hasher.update(msg)
-
-                    print(f"sending file with len: {len(msg)} and hash: {hasher.hexdigest()}")
-                    msg = bytes(f"{len(msg):<{HEADERSIZE}}", "utf-8") + msg
-
-                    for a in range(len(usrs)):
-                        clientThread = Client(usrs[a][0], usrs[a][1], msg)
-                        clientThread.start()
+                    listos = 0
+                    for i in usrs:
+                        if i[2]:
+                            listos += 1
+                    if listos >= 0:
+                        file = open(f'file{opcion}.mp4', 'rb')
+                        msg_enviar = file.read()
+                        hasher = hashlib.md5()
+                        hasher.update(msg_enviar)
+                        print("estamos listos")
+                        for i in usrs:
+                            if i[2]:
+                                i[3].enviar(msg_enviar, hasher)
+                    else:
+                        print("Los clientes aun no estan listos")
+                        nivel = 0
+                        print("""
++-------------------------------------+
+|               Opciones              |
++-----+-------------------------------+
+| Num |             Accion            |
++-----+-------------------------------+
+|  1  | Mostrar clientes conectados   |
++-----+-------------------------------+
+|  2  | Enviar archivo                |
++-----+-------------------------------+
+|  9  | Terminar                      |
++-----+-------------------------------+
+                    """)
             time.sleep(0.5)
 
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 s.bind((socket.gethostname(),5555))
 newthread = Admin()
 newthread.start()
+posNewClient = 0
 while True:
     s.listen(25)
     clientsocket, address = s.accept()
-    usrs.append([address, clientsocket])
-
+    clientThread = Client(address, clientsocket, posNewClient)
+    clientThread.start()
+    usrs.append([address, clientsocket, False, clientThread])
+    posNewClient += 1
 
