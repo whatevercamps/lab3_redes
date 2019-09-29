@@ -8,22 +8,25 @@ HEADERSIZE = 22
 usrs = []
 
 class Client(threading.Thread):
-    def __init__(self, clientAddress, clientsocket, pos):
+    def __init__(self, clientAddress, clientsocket, pos, enviar, msg, hasher):
         threading.Thread.__init__(self)
         self.csocket = clientsocket
         self.index = pos
-        print ("Nuevo cliente vinculado: ", clientAddress[0])
+        self.enviar = enviar
+        self.msg = msg
+        self.hasher = hasher
     def run(self):
-        while True:
-            msg = self.csocket.recv(1024)
-            msg_dcd = msg.decode("utf-8")
-            if "LISTO" in msg_dcd:
-                usrs[self.index][2] = True
-    def enviar(self, msg, hasher):
-        print("llega al menos")
-        print(f"enviando archivo con tamanio: {len(msg)} y hash: {hasher.hexdigest()}")
-        msg_pr = bytes(f"{len(msg):<{HEADERSIZE}}", "utf-8") + msg
-        self.csocket.send(msg_pr)
+        if not self.enviar:
+            while True:
+                msg = self.csocket.recv(1024)
+                msg_dcd = msg.decode("utf-8")
+                if "LISTO" in msg_dcd:
+                    usrs[self.index][2] = True
+        else:
+            print("llega al menos")
+            print(f"enviando archivo con tamanio: {len(self.msg)} y hash: {self.hasher.hexdigest()}")
+            msg_pr = bytes(f"{len(self.msg):<{HEADERSIZE}}", "utf-8") + self.msg
+            self.csocket.send(msg_pr)
 
         
 
@@ -105,7 +108,8 @@ class Admin(threading.Thread):
                         print("estamos listos")
                         for i in usrs:
                             if i[2]:
-                                i[3].enviar(msg_enviar, hasher)
+                                sender = Client(clientAddress=i[0], clientsocket = i[1], pos=None, enviar = True, msg= msg_enviar, hasher = hasher)
+                                sender.start()
                     else:
                         print("Los clientes aun no estan listos")
                         nivel = 0
@@ -132,7 +136,7 @@ posNewClient = 0
 while True:
     s.listen(25)
     clientsocket, address = s.accept()
-    clientThread = Client(address, clientsocket, posNewClient)
+    clientThread = Client(clientAddress=address, clientsocket = clientsocket, pos = posNewClient , enviar = False, msg = None, hasher = None)
     clientThread.start()
     usrs.append([address, clientsocket, False, clientThread])
     posNewClient += 1
