@@ -114,8 +114,8 @@ class Admin(threading.Thread):
                                 sender.start()
                     else:
                         print("Los clientes aun no estan listos")
-                        nivel = 0
-                        print("""
+                    nivel = 0
+                    print("""
 +-------------------------------------+
 |               Opciones              |
 +-----+-------------------------------+
@@ -127,7 +127,7 @@ class Admin(threading.Thread):
 +-----+-------------------------------+
 |  9  | Terminar                      |
 +-----+-------------------------------+
-                    """)
+                """)
             time.sleep(0.5)
 
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
