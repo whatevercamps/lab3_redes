@@ -73,5 +73,8 @@ while True:
             hasher.update(full_msg[HEADERSIZE:])
 
             print(f"recvd file with len: {len(full_msg[HEADERSIZE:])} and hash: {hasher.hexdigest()}")
+            f = open("file_recieved.mp4", "wb")
+            f.write(full_msg[HEADERSIZE:])
+            f.close()
             new_msg = True
             full_msg = b''
